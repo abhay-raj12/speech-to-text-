@@ -1,5 +1,6 @@
-from flask import Flask, render_template, request, jsonify  # type: ignore
-import whisper  # type: ignore
+
+from flask import Flask, render_template, request, jsonify
+import whisper
 import os
 
 app = Flask(__name__)
@@ -7,34 +8,37 @@ app = Flask(__name__)
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# Load whisper model
 model = whisper.load_model("base")
-
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
-
 @app.route("/transcribe", methods=["POST"])
 def transcribe():
-    if "audio" not in request.files:
-        return jsonify({"error": "No audio file provided"}), 400
+    try:
+        if "audio" not in request.files:
+            return jsonify({"error": "No audio file uploaded"})
 
-    audio = request.files["audio"]
+        file = request.files["audio"]
 
-    if audio.filename == "":
-        return jsonify({"error": "Empty filename"}), 400
+        if file.filename == "":
+            return jsonify({"error": "No file selected"})
 
-    filepath = os.path.join(UPLOAD_FOLDER, audio.filename)
-    audio.save(filepath)
+        filepath = os.path.join(UPLOAD_FOLDER, "audio.wav")
+        file.save(filepath)
 
-    result = model.transcribe(filepath)
+        # Whisper transcription
+        result = model.transcribe(filepath)
 
-    return jsonify({
-        "text": result["text"].strip()
-    })
+        text = result["text"]
 
+        return jsonify({"text": text})
+
+    except Exception as e:
+        return jsonify({"error": str(e)})
 
 if __name__ == "__main__":
     app.run(debug=True, port=7860)
-    
+
